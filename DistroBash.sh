@@ -9,6 +9,7 @@ if [ ! -f "$CONFIG_FILE" ]; then
     echo "Creating config.txt"
     cat <<EOL > "$CONFIG_FILE"
 # Example of configuration
+# home_directory: /home/user
 # -programming: ubuntu --nvidia
 # htop
 # curl
@@ -29,7 +30,6 @@ fi
 container_name=""
 distro=""
 flags=""
-nvidia_flag=""
 packages=()
 home_directory=""
 
@@ -183,7 +183,7 @@ remove_unused_packages() {
     if $recreate_container; then
         echo "Recreation of '$container' ..."
         distrobox rm "$container" --force
-        distrobox create --name "$container" --image "$distro" "$nvidia_flag" --home "$home/$container" --yes
+        distrobox create --name "$container" --image "$distro" --home "$home/$container" "$nvidia_flag"  --yes
     fi
 
     # Update present.txt
@@ -226,6 +226,7 @@ while IFS= read -r -u3 line || [[ -n "$line" ]]; do
         flags=$(echo "$line" | awk -F': ' '{print $2}' | awk '{$1=""; print $0}' | xargs)
 
         # Extract nvidia flag
+        nvidia_flag=""
         if [[ "$flags" == *"--nvidia"* ]]; then
             nvidia_flag="--nvidia"
             flags=$(echo "$flags" | sed 's/--nvidia//g') # Remove --nvidia from other flags
@@ -233,7 +234,7 @@ while IFS= read -r -u3 line || [[ -n "$line" ]]; do
 
         # Create adn start container
         echo "Creation of $container_name' (distro: $distro, flags: $nvidia_flag)..."
-        distrobox create --name "$container_name" --image "$distro" "$nvidia_flag" --home "$home_directory/$container_name" --yes
+        distrobox create --name "$container_name" --home "$home_directory/$container_name" --image "$distro" "$nvidia_flag" --yes
 
         # Detect package manager
         package_manager=$(detect_package_manager "$container_name" | tail -n 1 | tr -d '\r')
