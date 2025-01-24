@@ -19,4 +19,4 @@ This can be avoided by using the --no-recrate flag
 ## Flags
 --nvidia: enables nvidia drivers on the container
 --no-recreate: avoids the container from being recreated when a package is uninstalled
---no-autoexport: disables the autoexport feature
+--no-autoexport: disables the autoexport feature WIP
