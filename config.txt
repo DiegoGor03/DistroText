@@ -1,0 +1,15 @@
+# Container and package configuration
+
+# Define the home directory
+home_directory: /home/diego/DistroHomes
+
+# Container 1: ubuntu with the --nvidia flag
+-ubuntu: ubuntu:22.04 --nvidia
+htop
+curl
+vim
+
+-test: fedora --no-recreate
+git
+vim
+nano
