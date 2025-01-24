@@ -1,5 +1,5 @@
 # DistroBash
-A script to configure distrobox containers from text file
+A script to configure DistroBox containers from text file
 
 IMPORTANT NOTE: AT THIS STAGE NOT COMPLEATLY WORKING
 
