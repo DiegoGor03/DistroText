@@ -226,7 +226,6 @@ while IFS= read -r -u3 line || [[ -n "$line" ]]; do
         flags=$(echo "$line" | awk -F': ' '{print $2}' | awk '{$1=""; print $0}' | xargs)
 
         # Extract nvidia flag
-        nvidia_flag=""
         if [[ "$flags" == *"--nvidia"* ]]; then
             nvidia_flag="--nvidia"
             flags=$(echo "$flags" | sed 's/--nvidia//g') # Remove --nvidia from other flags
