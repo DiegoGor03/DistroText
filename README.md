@@ -1,8 +1,6 @@
 # DistroBash
 A script to configure DistroBox containers from text file
 
-IMPORTANT NOTE: AT THIS STAGE NOT COMPLEATLY WORKING
-
 ## Quick start
 This script let's you manage distrobox containers in a config.txt (in the same directory of ther script) file with the following sintax:
 '''
@@ -15,7 +13,10 @@ nala
 librecad
 '''
 
-NOTE: the directory should already exist
-
 When a program is removed and the script is executed the program is uninstalled and the container is recreated.
 This can be avoided by using the --no-recrate flag
+
+## Flags
+--nvidia: enables nvidia drivers on the container
+--no-recreate: avoids the container from being recreated when a package is uninstalled
+--no-autoexport: disables the autoexport feature
