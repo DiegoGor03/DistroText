@@ -31,7 +31,7 @@ container_name=""
 distro=""
 flags=""
 packages=()
-home_directory=""
+home_directory="$HOME"
 
 # package manager detect function
 detect_package_manager() {
@@ -64,6 +64,27 @@ update_present_file() {
         found && $0 ~ "^---------------------------------" {found=0}
         {print}
     ' "$PRESENT_FILE" > "${PRESENT_FILE}.tmp" && mv "${PRESENT_FILE}.tmp" "$PRESENT_FILE"
+}
+
+remove_old_containers() {
+    #read all containers in present
+    containers_in_present=($(awk '/^Container: / {print $2}' "$PRESENT_FILE"))
+    #read all containers in config
+    containers_in_config=($(awk '/^-/ {print substr($1, 2)}' "$CONFIG_FILE"))
+    # Packages to remove
+    for name in "${containers_in_present[@]}"; do
+        if [[ ! " ${containers_in_config[@]} " =~ " $name " ]]; then
+            distrobox rm "$name" --force
+
+            # Remove container entry from present.txt
+            awk -v container="$name" '
+                BEGIN {found=0}
+                $0 ~ "^Container: " container {found=1}
+                found && $0 ~ "^---------------------------------" {found=0; next}
+                !found {print}
+            ' "$PRESENT_FILE" > "${PRESENT_FILE}.tmp" && mv "${PRESENT_FILE}.tmp" "$PRESENT_FILE"
+        fi
+    done
 }
 
 # packages install function
@@ -107,15 +128,6 @@ install_packages() {
             found && $0 ~ "^---------------------------------" {found=0}
             {print}
         ' "$PRESENT_FILE" > "${PRESENT_FILE}.tmp" && mv "${PRESENT_FILE}.tmp" "$PRESENT_FILE"
-    else
-        # Add new container
-        {
-            echo "Container: $container"
-            echo "Distro: $distribution"
-            echo "Flags: $nvidia_fl $flag_str"
-            echo "Installed programs: ${packages_list[*]}"
-            echo "---------------------------------"
-        } >> "$PRESENT_FILE"
     fi
 
 }
@@ -190,8 +202,11 @@ remove_unused_packages() {
     update_present_file "$container" "${packages[@]}"
 }
 
+remove_old_containers
+
 # Read config.txt
 while IFS= read -r -u3 line || [[ -n "$line" ]]; do
+
     # Skip comments and empty lines
     if [[ -z "$line" || "$line" == \#* ]]; then
         continue
@@ -219,6 +234,8 @@ while IFS= read -r -u3 line || [[ -n "$line" ]]; do
             packages=()
         fi
 
+        # Clean packages
+        packages=()
 
         # Read container name, distro and flag
         container_name=$(echo "$line" | awk -F': ' '{print $1}' | sed 's/-//')
@@ -232,10 +249,21 @@ while IFS= read -r -u3 line || [[ -n "$line" ]]; do
             flags=$(echo "$flags" | sed 's/--nvidia//g') # Remove --nvidia from other flags
         fi
 
-        # Create adn start container
+        # Create and start container
         echo "Creation of $container_name' (distro: $distro, flags: $nvidia_flag)..."
         distrobox create --name "$container_name" --home "$home_directory/$container_name" --image "$distro" "$nvidia_flag" --yes
 
+        # Add new container
+        if ! grep -q "Container: $container_name" "$PRESENT_FILE"; then
+        {
+            echo "Container: $container_name"
+            echo "Distro: $distro"
+            echo "Flags: $nvidia_flag $flags"
+            echo "Installed programs: ${packages[*]}"
+            echo "---------------------------------"
+        } >> "$PRESENT_FILE"
+        fi
+        
         # Detect package manager
         package_manager=$(detect_package_manager "$container_name" | tail -n 1 | tr -d '\r')
 
@@ -247,8 +275,6 @@ while IFS= read -r -u3 line || [[ -n "$line" ]]; do
             echo "Detected package manager: $package_manager"
         fi
 
-        # Clean packages
-        packages=()
     else
         # Packages ++
         packages+=("$line")
