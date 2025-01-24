@@ -15,5 +15,7 @@ nala
 librecad
 '''
 
+NOTE: the directory should already exist
+
 When a program is removed and the script is executed the program is uninstalled and the container is recreated.
 This can be avoided by using the --no-recrate flag
