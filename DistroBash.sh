@@ -29,6 +29,7 @@ fi
 container_name=""
 distro=""
 flags=""
+nvidia_flag=""
 packages=()
 home_directory=""
 
