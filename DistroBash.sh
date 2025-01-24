@@ -121,10 +121,12 @@ install_packages() {
             return 1
             ;;
     esac
-
-    for pack in "${packages_list[@]}"; do
-        distrobox-enter "$container" -- distrobox-export -a "$pack"
-    done
+    
+    if [[ "$flag_str" != *"--no-autoexport"* ]]; then
+        for pack in "${packages_list[@]}"; do
+            distrobox-enter "$container" -- distrobox-export -a "$pack"
+        done
+    fi
 
     # Update present.txt with the new packages
     if grep -q "Container: $container" "$PRESENT_FILE"; then
@@ -195,9 +197,11 @@ remove_unused_packages() {
                 ;;
         esac
 
-        for pack in "${obsolete_packages[@]}"; do
-            distrobox-enter "$container" -- distrobox-export -a "$pack" --delete
-        done
+        if [[ "$flag_str" != *"--no-autoexport"* ]]; then
+            for pack in "${obsolete_packages[@]}"; do
+                distrobox-enter "$container" -- distrobox-export -a "$pack" --delete
+            done
+        fi
 
         # recreate container unless --no-recreate
         if [[ "$recreate_flag_str" != *"--no-recreate"* ]]; then
