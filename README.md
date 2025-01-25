@@ -1,4 +1,4 @@
-# DistroBash
+# DistroText
 A script to configure distrobox containers from text file
 
 ## Quick start
