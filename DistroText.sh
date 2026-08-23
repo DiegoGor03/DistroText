@@ -197,7 +197,7 @@ remove_unused_packages() {
                 ;;
         esac
 
-        if [[ "$flag_str" != *"--no-autoexport"* ]]; then
+        if [[ "$recreate_flag_str" != *"--no-autoexport"* ]]; then
             for pack in "${obsolete_packages[@]}"; do
                 distrobox-enter "$container" -- distrobox-export -a "$pack" --delete
             done
@@ -217,7 +217,7 @@ remove_unused_packages() {
     fi
 
     # Update present.txt
-    update_present_file "$container" "${packages[@]}"
+    update_present_file "$container" "${current_packages[@]}"
 }
 
 remove_old_containers
