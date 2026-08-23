@@ -68,18 +68,18 @@ update_present_file() {
 
 remove_old_containers() {
 
-    local remove=true
     #read all containers in present
     containers_in_present=($(awk '/^Container: / {print $2}' "$PRESENT_FILE"))
     #read all containers in config
     containers_in_config=($(awk '/^-/ {print substr($1, 2)}' "$CONFIG_FILE"))
     # Packages to remove
     for name in "${containers_in_present[@]}"; do
-        if [[" ${containers_in_config[@]} " =~ " $name " ]]; then
+        local remove=true
+        if [[ " ${containers_in_config[@]} " =~ " $name " ]]; then
             remove=false
         fi
 
-        if remove; then
+        if $remove; then
             distrobox rm "$name" --force
 
             # Remove container entry from present.txt
