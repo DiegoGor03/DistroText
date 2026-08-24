@@ -1,5 +1,5 @@
 # DistroText
-A script to configure distrobox containers from text file
+A script and TUI to configure distrobox containers from text file
 
 ## Quick start
 This script let's you manage distrobox containers in a config.txt (in the same directory of ther script) file with the following sintax:
@@ -20,30 +20,6 @@ This can be avoided by using the --no-recrate flag
 --nvidia: enables nvidia drivers on the container  
 --no-recreate: avoids the container from being recreated when a package is uninstalled  
 --no-autoexport: disables the autoexport feature  
-
-## Finding package names (repofind.py, pkgadd.py)
-Package names differ across distros, so two standalone helper scripts are
-included to look them up via [Repology](https://repology.org). They work
-exactly as before and don't require pkgtui.py:
-
-- `repofind.py <term>` searches Repology and prints the matching package
-  name for each configured distro family, so you know what to write in
-  config.txt.
-  ```
-  ./repofind.py libreoffice
-  ./repofind.py htop --families ubuntu,fedora,arch --exact
-  ```
-- `pkgadd.py <container> <term>` does the same search, but scoped to one
-  container already defined in config.txt (it infers the distro family
-  from that container's image), and adds your chosen result straight into
-  that container's block in config.txt for you.
-  ```
-  ./pkgadd.py ubuntu libreoffice
-  ./pkgadd.py test htop --config /path/to/config.txt
-  ```
-
-Both remain plain command-line tools and can be used on their own, without
-the TUI below.
 
 ## Interactive TUI (pkgtui.py)
 `pkgtui.py` wraps the whole workflow - editing config.txt and running
@@ -75,3 +51,27 @@ runs, either from the menu or by hand as usual.
 
 Controls: Up/Down (or j/k) to move, Enter to confirm/select, Space to
 toggle an item in a multi-select list, ESC/q to go back or cancel.
+
+## Finding package names (repofind.py, pkgadd.py)
+Package names differ across distros, so two standalone helper scripts are
+included to look them up via [Repology](https://repology.org). They work
+exactly as before and don't require pkgtui.py:
+
+- `repofind.py <term>` searches Repology and prints the matching package
+  name for each configured distro family, so you know what to write in
+  config.txt.
+  ```
+  ./repofind.py libreoffice
+  ./repofind.py htop --families ubuntu,fedora,arch --exact
+  ```
+- `pkgadd.py <container> <term>` does the same search, but scoped to one
+  container already defined in config.txt (it infers the distro family
+  from that container's image), and adds your chosen result straight into
+  that container's block in config.txt for you.
+  ```
+  ./pkgadd.py ubuntu libreoffice
+  ./pkgadd.py test htop --config /path/to/config.txt
+  ```
+
+Both remain plain command-line tools and can be used on their own, without
+the TUI.
