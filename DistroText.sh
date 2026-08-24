@@ -86,7 +86,7 @@ remove_old_containers() {
     #read all containers in present
     containers_in_present=($(awk '/^Container: / {print $2}' "$PRESENT_FILE"))
     #read all containers in config
-    containers_in_config=($(awk '/^-/ {print substr($1, 2)}' "$CONFIG_FILE"))
+    containers_in_config=($(awk '/^-/ {print substr($1, 2)}' "$CONFIG_FILE" | sed 's/:$//'))
     # Packages to remove
     for name in "${containers_in_present[@]}"; do
         local remove=true
@@ -166,8 +166,8 @@ remove_unused_packages() {
     local nvidia_flag="$3"
     local recreate_flag_str="$4"
     local package_manager="$5"
-    local current_packages=("${@:6}")
-    local home="$7"
+    local home="$6"
+    local current_packages=("${@:7}")
     local present_packages=()
     local obsolete_packages=()
     local recreate_container=false
@@ -258,7 +258,7 @@ while IFS= read -r -u3 line || [[ -n "$line" ]]; do
 
         # Remove old packages
         if [[ -n "$container_name" ]]; then
-            remove_unused_packages "$container_name" "$distro" "$nvidia_flag" "$flags" "$package_manager" "${packages[@]}" "$home_directory"
+            remove_unused_packages "$container_name" "$distro" "$nvidia_flag" "$flags" "$package_manager" "$home_directory" "${packages[@]}"
         fi
         
         # Add new packages
@@ -317,7 +317,7 @@ done 3< "$CONFIG_FILE"
 
 # Remove old packages from last container
 if [[ -n "$container_name" ]]; then
-    remove_unused_packages "$container_name" "$distro" "$nvidia_flag" "$flags" "$package_manager" "${packages[@]}" "$home_directory"
+    remove_unused_packages "$container_name" "$distro" "$nvidia_flag" "$flags" "$package_manager" "$home_directory" "${packages[@]}"
 fi
 
 # Add new packages to last container
