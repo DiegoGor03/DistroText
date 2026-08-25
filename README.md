@@ -52,6 +52,51 @@ runs, either from the menu or by hand as usual.
 Controls: Up/Down (or j/k) to move, Enter to confirm/select, Space to
 toggle an item in a multi-select list, ESC/q to go back or cancel.
 
+## Installation
+
+1. Make sure `install_launcher.sh`, `pkgtui.py`, and `DistroText_icon.png` are all in the same folder.
+2. Open a terminal in that folder and run:
+
+   ```bash
+   ./install_launcher.sh
+   ```
+
+   If the script isn't executable yet, first run:
+
+   ```bash
+   chmod +x install_launcher.sh
+   ```
+
+This copies all the application files to `~/.local/share/DistroText` and creates a launcher entry, so **DistroText** will appear in your application menu.
+
+## Updating
+
+To update to a newer version, just copy the new files (including the updated `install_launcher.sh`) into a folder and run the script again:
+
+```bash
+./install_launcher.sh
+```
+
+The installer detects the existing installation and replaces it cleanly, so no files from the previous version are left behind.
+
+## Uninstalling
+
+To remove DistroText, run:
+
+```bash
+./install_launcher.sh --uninstall
+```
+
+This deletes the installed files (`~/.local/share/DistroText`) and the application menu entry.
+
+## Help
+
+To see all available options:
+
+```bash
+./install_launcher.sh --help
+```
+
 ## Finding package names (repofind.py, pkgadd.py)
 Package names differ across distros, so two standalone helper scripts are
 included to look them up via [Repology](https://repology.org). They work
