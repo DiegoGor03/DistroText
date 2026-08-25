@@ -56,17 +56,19 @@ toggle an item in a multi-select list, ESC/q to go back or cancel.
 
 1. Make sure `install_launcher.sh`, `pkgtui.py`, and `DistroText_icon.png` are all in the same folder.
 2. Open a terminal in that folder and run:
-
+   
+   ```bash
+   chmod +x install_launcher.sh
+   ```
+   
+   Then proceed with the installation:
+   
    ```bash
    ./install_launcher.sh
    ```
 
-   If the script isn't executable yet, first run:
-
-   ```bash
-   chmod +x install_launcher.sh
-   ```
-
+4. If you want you can edit the home of you containers by editing `~/.local/share/DistroText/config.txt`
+   
 This copies all the application files to `~/.local/share/DistroText` and creates a launcher entry, so **DistroText** will appear in your application menu.
 
 ## Updating
