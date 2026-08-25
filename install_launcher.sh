@@ -31,6 +31,9 @@ APP_NAME="DistroText"
 MAIN_SCRIPT="pkgtui.py"
 ICON_NAME="DistroText_icon.png"
 
+# Files that hold user data and must NOT be overwritten by an update
+PRESERVE_FILES=("config.txt" "present.txt")
+
 # Folder where this installer is located (contains files to copy)
 SOURCE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
@@ -82,11 +85,19 @@ do_install() {
         exit 1
     fi
 
-    # If a previous version is already present, replace it entirely
-    # (clean folder) so no outdated files from old versions remain.
+    # If a previous version is already present, back up the user-data
+    # files (so an update doesn't wipe them), then replace the rest of
+    # the folder entirely (clean folder) so no outdated files remain.
+    BACKUP_DIR=""
     if [ -d "$INSTALL_DIR" ]; then
         echo "Existing installation detected in: $INSTALL_DIR"
         echo "Proceeding with update..."
+        BACKUP_DIR="$(mktemp -d)"
+        for pf in "${PRESERVE_FILES[@]}"; do
+            if [ -f "$INSTALL_DIR/$pf" ]; then
+                cp -f "$INSTALL_DIR/$pf" "$BACKUP_DIR/$pf"
+            fi
+        done
         rm -rf "$INSTALL_DIR"
     fi
 
@@ -94,17 +105,36 @@ do_install() {
     mkdir -p "$INSTALL_DIR"
 
     # 2. Copy all files from the source folder (including scripts),
-    #    excluding the installer itself
+    #    excluding the installer itself and the preserved user-data files
     echo "Copying files to: $INSTALL_DIR"
     shopt -s dotglob nullglob
     for f in "$SOURCE_DIR"/*; do
         name="$(basename "$f")"
         [ "$name" = "$SELF_NAME" ] && continue
+
+        skip=false
+        for pf in "${PRESERVE_FILES[@]}"; do
+            [ "$name" = "$pf" ] && skip=true && break
+        done
+        [ "$skip" = true ] && continue
+
         cp -rf "$f" "$INSTALL_DIR/"
     done
     shopt -u dotglob nullglob
 
-    # 3. Make copied scripts executable
+    # 3. Restore preserved user-data files: bring back the previous
+    #    installation's copy if it existed, otherwise fall back to the
+    #    version shipped in the source folder (first install).
+    for pf in "${PRESERVE_FILES[@]}"; do
+        if [ -n "$BACKUP_DIR" ] && [ -f "$BACKUP_DIR/$pf" ]; then
+            cp -f "$BACKUP_DIR/$pf" "$INSTALL_DIR/$pf"
+        elif [ -f "$SOURCE_DIR/$pf" ]; then
+            cp -f "$SOURCE_DIR/$pf" "$INSTALL_DIR/$pf"
+        fi
+    done
+    [ -n "$BACKUP_DIR" ] && rm -rf "$BACKUP_DIR"
+
+    # 4. Make copied scripts executable
     find "$INSTALL_DIR" -maxdepth 1 -type f \( -name "*.py" -o -name "*.sh" \) -exec chmod +x {} \;
 
     INSTALLED_SCRIPT="$INSTALL_DIR/$MAIN_SCRIPT"
@@ -115,7 +145,7 @@ do_install() {
         exit 1
     fi
 
-    # 4. Create folder for .desktop files and create the file itself
+    # 5. Create folder for .desktop files and create the file itself
     mkdir -p "$DESKTOP_DIR"
 
     cat > "$DESKTOP_FILE" <<EOF
