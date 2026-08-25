@@ -162,6 +162,25 @@ def container_exists(config_path, name):
     return any(b["name"] == name for b in blocks)
 
 
+def load_present_containers(present_path):
+    """Return the set of container names that DistroText.sh has actually
+    created, as recorded in present.txt. A container listed in config.txt
+    but missing here has not been applied yet - distrobox-enter would not
+    find it and would offer to create it with a default image instead,
+    which is not what we want."""
+    names = set()
+    if not os.path.isfile(present_path):
+        return names
+    with open(present_path) as f:
+        for line in f:
+            line = line.strip()
+            if line.startswith("Container:"):
+                name = line.split(":", 1)[1].strip()
+                if name:
+                    names.add(name)
+    return names
+
+
 def valid_container_name(name):
     if not name:
         return "Name cannot be empty."
@@ -459,17 +478,35 @@ def remove_container_flow(stdscr, config_path):
     ])
 
 
-def enter_container_flow(stdscr, config_path):
+def enter_container_flow(stdscr, config_path, present_path):
     containers = load_containers(config_path)
     if not containers:
         message_screen(stdscr, ["No containers found in config.txt."])
         return
 
-    labels = [f"{c['name']:20s} ({c['distro']})" for c in containers]
+    present_names = load_present_containers(present_path)
+
+    labels = []
+    for c in containers:
+        created = c["name"] in present_names
+        suffix = "" if created else "  [not created yet - run DistroText.sh]"
+        labels.append(f"{c['name']:20s} ({c['distro']}){suffix}")
+
     idx = select_menu(stdscr, "Enter which container?", labels)
     if idx is None:
         return
     name = containers[idx]["name"]
+
+    if name not in present_names:
+        message_screen(stdscr, [
+            f"'{name}' has not been created yet.",
+            "It is only defined in config.txt so far.",
+            "",
+            "Run DistroText.sh first (main menu -> Run DistroText.sh),",
+            "otherwise distrobox would report it as missing and offer",
+            "to create it with a default image, which breaks the setup.",
+        ])
+        return
 
     # Drop out of curses mode so distrobox-enter gets a real interactive
     # shell attached to the terminal.
@@ -523,7 +560,7 @@ def run_distrotext_sh(stdscr, script_path):
         stdscr.refresh()
 
 
-def run(stdscr, config_path, script_path):
+def run(stdscr, config_path, script_path, present_path):
     curses.use_default_colors()
 
     main_menu_items = [
@@ -546,7 +583,7 @@ def run(stdscr, config_path, script_path):
         elif choice == 2:
             remove_container_flow(stdscr, config_path)
         elif choice == 3:
-            enter_container_flow(stdscr, config_path)
+            enter_container_flow(stdscr, config_path, present_path)
         elif choice == 4:
             run_distrotext_sh(stdscr, script_path)
 
@@ -559,6 +596,11 @@ def main():
         default=None,
         help="Path to DistroText.sh (default: DistroText.sh next to --config)",
     )
+    parser.add_argument(
+        "--present",
+        default=None,
+        help="Path to present.txt (default: present.txt next to --config)",
+    )
     args = parser.parse_args()
 
     if not os.path.isfile(args.config):
@@ -569,7 +611,10 @@ def main():
     script_path = os.path.abspath(args.script) if args.script else os.path.join(
         os.path.dirname(config_path), "DistroText.sh"
     )
-    curses.wrapper(run, config_path, script_path)
+    present_path = os.path.abspath(args.present) if args.present else os.path.join(
+        os.path.dirname(config_path), "present.txt"
+    )
+    curses.wrapper(run, config_path, script_path, present_path)
 
 
 if __name__ == "__main__":
