@@ -119,33 +119,88 @@ install_packages() {
 
     echo "Installing packages for '$container'..."
 
-    case "$package_man" in
-        apt)
-            distrobox-enter "$container" -- sudo apt update -y
-            distrobox-enter "$container" -- sudo apt install -y "${packages_list[@]}"
-            ;;
-        dnf)
-            distrobox-enter "$container" -- sudo dnf install -y "${packages_list[@]}"
-            ;;
-        pacman)
-            distrobox-enter "$container" -- sudo pacman -Syu --noconfirm
-            distrobox-enter "$container" -- sudo pacman -S --noconfirm "${packages_list[@]}"
-            ;;
-        *)
-            echo "Error: package manager '$package_man' unsupported!"
-            return 1
-            ;;
-    esac
+    # Check which packages are already installed by reading present.txt
+    local to_install=()
+    local installed_packages=()
     
-    if [[ "$flag_str" != *"--no-autoexport"* ]]; then
-        for pack in "${packages_list[@]}"; do
-            distrobox-enter "$container" -- distrobox-export -a "$pack"
+    # Extract currently installed packages from present.txt
+    if grep -q "Container: $container" "$PRESENT_FILE"; then
+        local present_packages=$(awk -v container="$container" '
+            $0 ~ "Container: " container {found=1}
+            found && $0 ~ "Installed programs: " {
+                sub("Installed programs: ", "")
+                print $0
+                exit
+            }
+        ' "$PRESENT_FILE")
+        IFS=' ' read -r -a installed_packages <<< "$present_packages"
+    fi
+
+    # Determine which packages need to be installed
+    for pkg in "${packages_list[@]}"; do
+        local found=false
+        for installed_pkg in "${installed_packages[@]}"; do
+            if [[ "$pkg" == "$installed_pkg" ]]; then
+                found=true
+                break
+            fi
         done
+        if [[ "$found" == false ]]; then
+            to_install+=("$pkg")
+        fi
+    done
+
+    # Only install packages that aren't already installed
+    if [ ${#to_install[@]} -gt 0 ]; then
+        case "$package_man" in
+            apt)
+                distrobox-enter "$container" -- sudo apt update -y
+                distrobox-enter "$container" -- sudo apt install -y "${to_install[@]}"
+                ;;
+            dnf)
+                distrobox-enter "$container" -- sudo dnf install -y "${to_install[@]}"
+                ;;
+            pacman)
+                distrobox-enter "$container" -- sudo pacman -Syu --noconfirm
+                distrobox-enter "$container" -- sudo pacman -S --noconfirm "${to_install[@]}"
+                ;;
+            *)
+                echo "Error: package manager '$package_man' unsupported!"
+                return 1
+                ;;
+        esac
+        
+        if [[ "$flag_str" != *"--no-autoexport"* ]]; then
+            for pack in "${to_install[@]}"; do
+                distrobox-enter "$container" -- distrobox-export -a "$pack"
+            done
+        fi
+    else
+        echo "All packages already installed for '$container'"
     fi
 
     # Update present.txt with the new packages
     if grep -q "Container: $container" "$PRESENT_FILE"; then
-        awk -v container="$container" -v updated_packages="${packages_list[*]}" '
+        # Combine existing and new packages
+        local all_packages=("${installed_packages[@]}" "${packages_list[@]}")
+        # Remove duplicates while preserving order
+        local unique_packages=()
+        local seen=()
+        for pkg in "${all_packages[@]}"; do
+            local found=false
+            for seen_pkg in "${seen[@]}"; do
+                if [[ "$pkg" == "$seen_pkg" ]]; then
+                    found=true
+                    break
+                fi
+            done
+            if [[ "$found" == false ]]; then
+                seen+=("$pkg")
+                unique_packages+=("$pkg")
+            fi
+        done
+        
+        awk -v container="$container" -v updated_packages="${unique_packages[*]}" '
             BEGIN {found=0}
             $0 ~ "Container: " container {found=1}
             found && $0 ~ "Installed programs: " {
@@ -194,7 +249,7 @@ remove_unused_packages() {
 
     # Remove old packages
     if [[ ${#obsolete_packages[@]} -gt 0 ]]; then
-        echo "Rimuovendo pacchetti obsoleti da '$container': ${obsolete_packages[*]}"
+        echo "Removing obsolete packages from '$container': ${obsolete_packages[*]}"
 
         case "$package_manager" in
             apt)
@@ -282,9 +337,14 @@ while IFS= read -r -u3 line || [[ -n "$line" ]]; do
             flags=$(echo "$flags" | sed 's/--nvidia//g') # Remove --nvidia from other flags
         fi
 
-        # Create and start container
-        echo "Creation of $container_name' (distro: $distro, flags: $nvidia_flag)..."
-        distrobox create --name "$container_name" --home "$home_directory/$container_name" --image "$distro" "$nvidia_flag" --yes
+        # Check if container already exists
+        if distrobox list | grep -q "^$container_name "; then
+            echo "Container '$container_name' already exists, skipping creation..."
+        else
+            # Create and start container
+            echo "Creation of $container_name' (distro: $distro, flags: $nvidia_flag)..."
+            distrobox create --name "$container_name" --home "$home_directory/$container_name" --image "$distro" "$nvidia_flag" --yes
+        fi
 
         # Add new container
         if ! grep -q "Container: $container_name" "$PRESENT_FILE"; then
@@ -326,4 +386,4 @@ if [[ -n "$container_name" && ${#packages[@]} -gt 0 ]]; then
     packages=()
 fi
 
-echo "End withot errors"
+echo "End without errors"
