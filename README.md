@@ -19,7 +19,7 @@ This can be avoided by using the --no-recrate flag
 ## Flags
 --nvidia: enables nvidia drivers on the container  
 --no-recreate: avoids the container from being recreated when a package is uninstalled  
---no-autoexport: disables the autoexport feature  
+--no-autoexport: disables the autoexport feature
 
 ## Interactive TUI (pkgtui.py)
 `pkgtui.py` wraps the whole workflow - editing config.txt and running
@@ -32,6 +32,8 @@ From the main menu you can:
 - **Search & add a package to a container** - search Repology once, pick a
   result, then pick which configured container(s) to add it to (only
   containers whose distro family matches the result are offered).
+- **Remove packages from container** - remove one or more packages from
+  configured containers.
 - **Create a container** - pick a name, pick an image from a list of
   common distrobox images (or choose "Custom" to type any image
   manually), and pick flags (`--nvidia`, `--no-recreate`,
@@ -40,6 +42,8 @@ From the main menu you can:
   delete their block from config.txt (with a confirmation prompt).
 - **Enter a container (shell)** - runs `distrobox-enter` on a container so
   you can poke around inside it.
+- **Upgrade all containers** - runs `distrobox-upgrade --all` to upgrade
+  all existing Distrobox containers.
 - **Run DistroText.sh (apply changes)** - runs the script so any of the
   above edits actually get applied (containers created/destroyed,
   packages installed/removed).
