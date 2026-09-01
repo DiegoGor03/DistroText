@@ -156,6 +156,28 @@ def package_already_present(lines, block, next_block, pkg_name):
     return False
 
 
+def list_packages(lines, block, next_block):
+    """Return a list of package names in the given container block."""
+    packages = []
+    end = next_block["header_line"] if next_block else len(lines)
+    for i in range(block["header_line"] + 1, end):
+        line = lines[i].strip()
+        # Only include lines that are not comments or flags
+        if line and not line.startswith("#") and not line.startswith("-"):
+            packages.append(line)
+    return packages
+
+
+def remove_package_line(lines, block, next_block, pkg_name):
+    """Remove a package line from the given container block and return the modified lines."""
+    end = next_block["header_line"] if next_block else len(lines)
+    for i in range(block["header_line"] + 1, end):
+        if lines[i].strip() == pkg_name:
+            lines.pop(i)
+            return lines
+    return lines
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Search Repology for a package and add it to the DistroText config.txt"
