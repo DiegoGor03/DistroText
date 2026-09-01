@@ -237,6 +237,45 @@ def add_package_to_container(config_path, container_name, pkg_name):
     return f"'{container_name}': added '{pkg_name}'"
 
 
+def get_container_packages(config_path, container_name):
+    """Return a list of package names for a given container."""
+    lines, blocks = pkgadd.parse_config(config_path)
+    block = next((b for b in blocks if b["name"] == container_name), None)
+    if not block:
+        return []
+    
+    # Find the packages in this container block using pkgadd's logic
+    idx_block = blocks.index(block)
+    next_block = blocks[idx_block + 1] if idx_block + 1 < len(blocks) else None
+    
+    return pkgadd.list_packages(lines, block, next_block)
+
+
+def remove_package_from_container(config_path, container_name, pkg_name):
+    """Remove a package from a container's block in config.txt.
+    Returns a status string describing what happened."""
+    lines, blocks = pkgadd.parse_config(config_path)
+    block = next((b for b in blocks if b["name"] == container_name), None)
+    if not block:
+        return f"'{container_name}': container not found (was it removed?)"
+    
+    idx_block = blocks.index(block)
+    next_block = blocks[idx_block + 1] if idx_block + 1 < len(blocks) else None
+    
+    # Check if package exists before attempting removal
+    packages = pkgadd.list_packages(lines, block, next_block)
+    if pkg_name not in packages:
+        return f"'{container_name}': '{pkg_name}' not found in container"
+    
+    # Remove the package line
+    pkgadd.remove_package_line(lines, block, next_block, pkg_name)
+    
+    with open(config_path, "w") as f:
+        f.writelines(lines)
+    
+    return f"'{container_name}': removed '{pkg_name}'"
+
+
 # ---------------------------------------------------------------------------
 # Curses UI primitives
 # ---------------------------------------------------------------------------
@@ -478,6 +517,81 @@ def remove_container_flow(stdscr, config_path):
     ])
 
 
+def remove_package_flow(stdscr, config_path):
+    """Allow user to remove packages from containers."""
+    containers = load_containers(config_path)
+    if not containers:
+        message_screen(stdscr, [
+            "No containers found in config.txt.",
+            "Create one first (main menu -> Create a container).",
+        ])
+        return
+
+    # Get packages for each container
+    container_packages = []
+    for c in containers:
+        packages = get_container_packages(config_path, c["name"])
+        container_packages.append((c, packages))
+    
+    # Show containers with their packages
+    labels = []
+    for container, packages in container_packages:
+        if packages:
+            package_list = ", ".join(packages[:3])  # Show first 3 packages
+            if len(packages) > 3:
+                package_list += f" (+{len(packages) - 3} more)"
+            labels.append(f"{container['name']:20s} ({container['distro']}) - {package_list}")
+        else:
+            labels.append(f"{container['name']:20s} ({container['distro']}) - No packages")
+
+    sel = select_menu(
+        stdscr,
+        "Remove packages from which container(s)?",
+        labels,
+        multi=True,
+    )
+    if not sel:
+        return
+
+    # Get selected containers
+    selected_containers = [container_packages[i][0] for i in sel]
+    
+    # For each selected container, show its packages and allow removal
+    results = []
+    for container in selected_containers:
+        packages = get_container_packages(config_path, container["name"])
+        if not packages:
+            results.append(f"'{container['name']}': No packages to remove")
+            continue
+            
+        package_labels = [f"{pkg}" for pkg in packages]
+        package_sel = select_menu(
+            stdscr,
+            f"Remove which packages from '{container['name']}'?",
+            package_labels,
+            multi=True,
+        )
+        if not package_sel:
+            continue
+            
+        # Remove selected packages
+        for i in package_sel:
+            # Add confirmation step
+            confirm_msg = [
+                f"Are you sure you want to remove '{packages[i]}' from '{container['name']}'?",
+                "",
+                "This action cannot be undone.",
+            ]
+            if not confirm_screen(stdscr, confirm_msg):
+                results.append(f"'{container['name']}': removal of '{packages[i]}' cancelled")
+                continue
+                
+            result = remove_package_from_container(config_path, container["name"], packages[i])
+            results.append(result)
+    
+    message_screen(stdscr, ["Done:"] + results + ["", "Run DistroText.sh to apply the changes."])
+
+
 def enter_container_flow(stdscr, config_path, present_path):
     containers = load_containers(config_path)
     if not containers:
@@ -591,6 +705,7 @@ def run(stdscr, config_path, script_path, present_path):
 
     main_menu_items = [
         "Search & add a package to a container",
+        "Remove packages from container",
         "Create a container",
         "Remove a container",
         "Enter a container (shell)",
@@ -601,19 +716,21 @@ def run(stdscr, config_path, script_path, present_path):
 
     while True:
         choice = select_menu(stdscr, "DistroText - main menu", main_menu_items, footer="[Enter] select  [q/ESC] quit")
-        if choice is None or choice == 6:
+        if choice is None or choice == 7:
             return
         if choice == 0:
             search_and_add_flow(stdscr, config_path)
         elif choice == 1:
-            create_container_flow(stdscr, config_path)
+            remove_package_flow(stdscr, config_path)
         elif choice == 2:
-            remove_container_flow(stdscr, config_path)
+            create_container_flow(stdscr, config_path)
         elif choice == 3:
-            enter_container_flow(stdscr, config_path, present_path)
+            remove_container_flow(stdscr, config_path)
         elif choice == 4:
-            upgrade_all_containers_flow(stdscr)
+            enter_container_flow(stdscr, config_path, present_path)
         elif choice == 5:
+            upgrade_all_containers_flow(stdscr)
+        elif choice == 6:
             run_distrotext_sh(stdscr, script_path)
 
 
@@ -644,6 +761,26 @@ def main():
         os.path.dirname(config_path), "present.txt"
     )
     curses.wrapper(run, config_path, script_path, present_path)
+
+
+def confirm_screen(stdscr, lines):
+    """Display a confirmation message and wait for Y/N response."""
+    curses.curs_set(0)
+    stdscr.erase()
+    h, w = stdscr.getmaxyx()
+    for i, line in enumerate(lines[: h - 3]):
+        stdscr.addstr(i, 0, line[: w - 1])
+    stdscr.addstr(h - 3, 0, "Confirm? (y/N): "[: w - 1])
+    stdscr.refresh()
+    
+    while True:
+        key = stdscr.getch()
+        if key in (ord('y'), ord('Y')):
+            return True
+        elif key in (ord('n'), ord('N'), curses.KEY_EXIT, 27):  # ESC
+            return False
+        elif key in (ord('\n'), ord('\r')):
+            return False
 
 
 if __name__ == "__main__":
