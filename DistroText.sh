@@ -284,9 +284,44 @@ remove_unused_packages() {
         echo "Recreation of '$container' ..."
         distrobox rm "$container" --force
         distrobox create --name "$container" --image "$distro" --home "$home/$container" "$nvidia_flag"  --yes
+
+        # The container is now empty: everything that should remain
+        # (i.e. every package still in current_packages) must be
+        # reinstalled from scratch, not just the newly added ones.
+        if [[ ${#current_packages[@]} -gt 0 ]]; then
+            echo "Reinstalling remaining packages for '$container' after recreation: ${current_packages[*]}"
+
+            case "$package_manager" in
+                apt)
+                    distrobox-enter "$container" -- sudo apt update -y
+                    distrobox-enter "$container" -- sudo apt install -y "${current_packages[@]}"
+                    ;;
+                dnf)
+                    distrobox-enter "$container" -- sudo dnf install -y "${current_packages[@]}"
+                    ;;
+                pacman)
+                    distrobox-enter "$container" -- sudo pacman -Syu --noconfirm
+                    distrobox-enter "$container" -- sudo pacman -S --noconfirm "${current_packages[@]}"
+                    ;;
+                *)
+                    echo "Error: package manager '$package_manager' unsupported!"
+                    return 1
+                    ;;
+            esac
+
+            if [[ "$recreate_flag_str" != *"--no-autoexport"* ]]; then
+                for pack in "${current_packages[@]}"; do
+                    distrobox-enter "$container" -- distrobox-export -a "$pack"
+                done
+            fi
+        fi
     fi
 
     # Update present.txt
+    # If the container was recreated, current_packages now accurately
+    # reflects what's installed (we just reinstalled all of it above).
+    # If it wasn't recreated, current_packages is still correct since
+    # the obsolete ones were removed and nothing else changed.
     update_present_file "$container" "${current_packages[@]}"
 }
 
