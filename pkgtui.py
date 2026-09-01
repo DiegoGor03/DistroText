@@ -533,6 +533,32 @@ def enter_container_flow(stdscr, config_path, present_path):
         stdscr.refresh()
 
 
+def upgrade_all_containers_flow(stdscr):
+    """Run 'distrobox-upgrade --all' to upgrade every existing container."""
+    # Drop out of curses mode so distrobox-upgrade's own output (and any
+    # sudo password prompt it triggers) shows up normally in the terminal.
+    curses.def_prog_mode()
+    curses.endwin()
+    try:
+        print("\n--- Upgrading all containers (distrobox-upgrade --all) ---\n")
+        try:
+            result = subprocess.run(["distrobox-upgrade", "--all"])
+            rc = result.returncode
+        except FileNotFoundError:
+            print("'distrobox-upgrade' not found in PATH.")
+            rc = None
+        print()
+        if rc == 0:
+            print("--- All containers upgraded successfully ---")
+        elif rc is not None:
+            print(f"--- distrobox-upgrade exited with code {rc} ---")
+        input("Press Enter to return to the menu...")
+    finally:
+        curses.reset_prog_mode()
+        stdscr.clear()
+        stdscr.refresh()
+
+
 def run_distrotext_sh(stdscr, script_path):
     if not os.path.isfile(script_path):
         message_screen(stdscr, [
@@ -568,13 +594,14 @@ def run(stdscr, config_path, script_path, present_path):
         "Create a container",
         "Remove a container",
         "Enter a container (shell)",
+        "Upgrade all containers",
         "Run DistroText.sh (apply changes)",
         "Quit",
     ]
 
     while True:
         choice = select_menu(stdscr, "DistroText - main menu", main_menu_items, footer="[Enter] select  [q/ESC] quit")
-        if choice is None or choice == 5:
+        if choice is None or choice == 6:
             return
         if choice == 0:
             search_and_add_flow(stdscr, config_path)
@@ -585,6 +612,8 @@ def run(stdscr, config_path, script_path, present_path):
         elif choice == 3:
             enter_container_flow(stdscr, config_path, present_path)
         elif choice == 4:
+            upgrade_all_containers_flow(stdscr)
+        elif choice == 5:
             run_distrotext_sh(stdscr, script_path)
 
 
