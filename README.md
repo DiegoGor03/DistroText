@@ -58,7 +58,7 @@ toggle an item in a multi-select list, ESC/q to go back or cancel.
 
 ## Installation
 
-1. Make sure `install_launcher.sh`, `pkgtui.py`, and `DistroText_icon.png` are all in the same folder.
+1. Make sure all the repo files are in the same folder.
 2. Open a terminal in that folder and run:
    
    ```bash
@@ -77,7 +77,7 @@ This copies all the application files to `~/.local/share/DistroText` and creates
 
 ## Updating
 
-To update to a newer version, just copy the new files (including the updated `install_launcher.sh`) into a folder and run the script again:
+To update to a newer version, just download the new files (including the updated `install_launcher.sh`) and run the script again:
 
 ```bash
 ./install_launcher.sh
