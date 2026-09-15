@@ -419,7 +419,7 @@ while IFS= read -r -u3 line || [[ -n "$line" ]]; do
         fi
 
         # Check if container already exists
-        if distrobox list | awk -F'|' '{gsub(/^[ \t]+|[ \t]+$/, "", $2); print $2}' | grep -qx "$container_name"; then
+        if distrobox list | grep -q "^$container_name "; then
             echo "Container '$container_name' already exists, skipping creation..."
         else
             # Create and start container
