@@ -112,7 +112,7 @@ update_present_file() {
     awk -v container="$container" -v updated_packages="${updated_packages[*]}" '
         BEGIN {found=0}
         $0 ~ "Container: " container {found=1}
-        found && $0 ~ "Installed programs: " {
+        found && $0 ~ "Installed programs:" {
             print "Installed programs: " updated_packages
             next
         }
