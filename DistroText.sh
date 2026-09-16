@@ -190,7 +190,7 @@ install_packages() {
     if grep -q "Container: $container" "$PRESENT_FILE"; then
         local present_packages=$(awk -v container="$container" '
             $0 ~ "Container: " container {found=1}
-            found && $0 ~ "Installed programs: " {
+            found && $0 ~ "Installed programs:" {
                 sub("Installed programs: ", "")
                 print $0
                 exit
@@ -270,7 +270,7 @@ remove_unused_packages() {
     if grep -q "Container: $container" "$PRESENT_FILE"; then
         present_packages=$(awk -v container="$container" '
             $0 ~ "Container: " container {found=1}
-            found && $0 ~ "Installed programs: " {
+            found && $0 ~ "Installed programs:" {
                 sub("Installed programs: ", "")
                 print $0
                 exit
